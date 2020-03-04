@@ -1,0 +1,202 @@
+{
+    "version": 2,
+    "controller": {},
+    "workers": [
+        {
+            "type": "router",
+            "realms": [
+                {
+                    "name": "realm",
+                    "roles": [
+                        {
+                            "name": "authenticator",
+                            "permissions": [
+                                {
+                                    "uri": "com.example.authenticate",
+                                    "match": "exact",
+                                    "allow": {
+                                        "call": false,
+                                        "register": true,
+                                        "publish": false,
+                                        "subscribe": false
+                                    },
+                                    "disclose": {
+                                        "caller": false,
+                                        "publisher": false
+                                    },
+                                    "cache": true
+                                }
+                            ]
+                        },
+                        {
+                            "name": "LedController",
+                            "permissions": [
+                                {
+                                    "uri": "*",
+                                    "allow": {
+                                        "call": true,
+                                        "register": true,
+                                        "publish": true,
+                                        "subscribe": true
+                                    },
+                                    "disclose": {
+                                        "caller": false,
+                                        "publisher": false
+                                    },
+                                    "cache": true
+                                }
+                            ]
+                        },
+                        {
+                            "name": "App",
+                            "permissions": [
+                                {
+                                    "uri": "*",
+                                    "allow": {
+                                        "call": true,
+                                        "register": true,
+                                        "publish": true,
+                                        "subscribe": true
+                                    },
+                                    "disclose": {
+                                        "caller": false,
+                                        "publisher": false
+                                    },
+                                    "cache": true
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "transports": [
+{
+                    "type": "web",
+                    "endpoint": {
+                        "type": "tcp",
+                        "port": 80
+                    },
+                    "paths": {
+                        "/": {
+                            "type": "redirect",
+                            "url": "https://example.com"
+                        }
+                    }
+                },
+                {
+                    "type": "websocket",
+                    "url": "ws://localhost:9000",
+                    "endpoint": {
+                        "type": "tcp",
+                        "port": 9000,
+                        "interface": "127.0.0.1"
+                    },
+                    "auth": {
+                        "wampcra": {
+                            "type": "static",
+                            "users": {
+                                "authenticator": {
+                                    "secret": "secret-goes-here",
+                                    "role": "authenticator"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "universal",
+                    "endpoint": {
+                        "type": "tcp",
+                        "port": 443,
+                        "tls": {
+                            "key": "../privkey.pem",
+                            "certificate": "../cert.pem",
+                            "chain_certificates": [
+                                "../chain.pem"
+                            ],
+                            "dhparam": "../dhparam.pem",
+                            "ciphers": "cipher-suites-here"
+                        }
+                    },
+                    "websocket": {
+                        "ws": {
+                            "type": "websocket",
+                            "auth": {
+                                "wampcra": {
+                                    "type": "dynamic",
+                                    "authenticator": "com.example.authenticate"
+                                }
+                            },
+                            "url": "wss://example.com",
+                            "serializers": [
+                                "cbor", "msgpack", "json"
+                            ],
+                            "options": {
+                                "allow_null_origin": true,
+                                "enable_webstatus": true,
+                                "max_frame_size": 1048576,
+                                "max_message_size": 1048576,
+                                "auto_fragment_size": 65536,
+                                "fail_by_drop": true,
+                                "open_handshake_timeout": 2500,
+                                "close_handshake_timeout": 1000,
+                                "auto_ping_interval": 10000,
+                                "auto_ping_timeout": 5000,
+                                "auto_ping_size": 4,
+                                "compression": {
+                                    "deflate": {
+                                        "request_no_context_takeover": false,
+                                        "request_max_window_bits": 13,
+                                        "no_context_takeover": false,
+                                        "max_window_bits": 13,
+                                        "memory_level": 5
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "web": {
+                        "paths": {
+                            "/": {
+                                "type": "static",
+                                "directory": "../web/"
+                            },
+                            "publish": {
+                                "type": "publisher",
+                                "realm": "realm",
+                                "role": "App",
+                                "options": {
+                                    "key": "publisher-key",
+                                    "secret": "publisher-secret"
+                                }
+                            },
+                            "call": {
+                                "type": "caller",
+                                "realm": "realm",
+                                "role": "App",
+                                "options": {
+                                    "key": "caller-key",
+                                    "secret": "caller-key"
+                                }
+                            }
+                        }
+
+                    }
+                }
+            ]
+        },
+        {
+            "type": "guest",
+            "executable": "/usr/bin/env",
+            "arguments": [
+                "php",
+                "../authenticator.php",
+                "ws://127.0.0.1:9000",
+                "realm",
+                "authenticator",
+                "secret-goes-here"
+            ]
+        }
+    ]
+}
+

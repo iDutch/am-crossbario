@@ -1,0 +1,4 @@
+config.json
+*.priv
+*.pub
+*.pid

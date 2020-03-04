@@ -1,0 +1,6 @@
+{
+    "require": {
+        "voryx/thruway": "^0.5.3",
+        "thruway/pawl-transport": "^0.5.1"
+    }
+}
