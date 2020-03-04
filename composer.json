@@ -1,6 +1,9 @@
 {
     "require": {
         "voryx/thruway": "^0.5.3",
-        "thruway/pawl-transport": "^0.5.1"
+        "thruway/pawl-transport": "^0.5.1",
+        "guzzlehttp/guzzle": "~6.0",
+        "vlucas/phpdotenv": "^4.1",
+        "sainsburys/guzzle-oauth2-plugin": "^3.0"
     }
 }

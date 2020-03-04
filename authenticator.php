@@ -34,31 +34,50 @@ use Thruway\Authentication\ClientWampCraAuthenticator;
 use Thruway\Connection;
 use Thruway\Logging\Logger;
 use Thruway\Message\ChallengeMessage;
+use GuzzleHttp\Client;
+use GuzzleHttp\HandlerStack;
+use Sainsburys\Guzzle\Oauth2\GrantType\RefreshToken;
+use Sainsburys\Guzzle\Oauth2\GrantType\PasswordCredentials;
+use Sainsburys\Guzzle\Oauth2\Middleware\OAuthMiddleware;
 
 require __DIR__ . '/vendor/autoload.php';
 
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 Logger::set(new NullLogger());
 
-$userDb = [
-    // A user with an unsalted password
-    'LedController'   => [
-        'secret' => 'your-secret-here',
-        'role'   => 'LedController'
-    ],
-    'App' => [
-        'secret' => 'your-secret-here',
-        'role' => 'App'
-    ],
-    // A user with a salted password
-    'peter' => [
-        'secret'     => 'prq7+YkJ1/KlW1X0YczMHw==',
-        'role'       => 'frontend',
-        'salt'       => 'salt123',
-        'iterations' => 100,
-        'keylen'     => 16
-    ]
+$baseUri = $_ENV['OAUTH_BASE_URI'];
+$config = [
+    PasswordCredentials::CONFIG_USERNAME => $_ENV['OAUTH_USER_EMAIL'],
+    PasswordCredentials::CONFIG_PASSWORD => $_ENV['OAUTH_USER_PASSWORD'],
+    PasswordCredentials::CONFIG_CLIENT_ID => $_ENV['OAUTH_CLIENT_ID'],
+    PasswordCredentials::CONFIG_CLIENT_SECRET => $_ENV['OAUTH_CLIENT_SECRET'],
+    PasswordCredentials::CONFIG_TOKEN_URL => '/oauth/token',
+    'scope' => $_ENV['OAUTH_SCOPE'],
 ];
 
+$oauthClient = new Client(['base_uri' => $baseUri]);
+$grantType = new PasswordCredentials($oauthClient, $config);
+$refreshToken = new RefreshToken($oauthClient, $config);
+$middleware = new OAuthMiddleware($oauthClient, $grantType, $refreshToken);
+
+$handlerStack = HandlerStack::create();
+$handlerStack->push($middleware->onBefore());
+$handlerStack->push($middleware->onFailure(5));
+
+$client = new Client(['handler'=> $handlerStack, 'base_uri' => $baseUri, 'auth' => 'oauth2']);
+$response = $client->request('GET', '/api/crossbar/clients');
+
+$decoded_response = json_decode((string) $response->getBody());
+
+foreach ($decoded_response->data as $users) {
+    foreach ($users as $username => $data) {
+        $userDb[$username] = [
+            'secret' => $data->key,
+            'role' => $data->role
+        ];
+    }
+}
 
 $authenticate = function ($args) use ($userDb) {
     $realm  = array_shift($args);
